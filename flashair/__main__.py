@@ -1,4 +1,4 @@
-"""Командная строка: python -m flashair <команда>."""
+"""Command line: python -m flashair <command>."""
 
 import argparse
 import fnmatch
@@ -13,7 +13,7 @@ from .storage import Storage
 
 
 def is_ignored(s: Settings, f: CardFile) -> bool:
-    """Шаблон из files.ignore совпадает с именем или полным путём на карте (без учёта регистра)."""
+    """A files.ignore pattern matches the name or the full card path (case-insensitive)."""
     return any(
         fnmatch.fnmatch(f.name.upper(), p.upper()) or fnmatch.fnmatch(f.path.upper(), p.upper())
         for p in s.ignore
@@ -21,42 +21,42 @@ def is_ignored(s: Settings, f: CardFile) -> bool:
 
 
 def scan(s: Settings, card: Card, db: Storage) -> list[CardFile]:
-    log.step(f"Сканирование карты, папка {s.root}")
+    log.step(f"Scanning the card, folder {s.root}")
     files = card.walk(s.root)
 
     ignored = [f for f in files if is_ignored(s, f)]
     if ignored:
-        log.info(f"Игнорируются по настройке files.ignore: {', '.join(f.path for f in ignored)}")
+        log.info(f"Ignored by the files.ignore setting: {', '.join(f.path for f in ignored)}")
         files = [f for f in files if f not in ignored]
 
     if s.extensions:
         media = [f for f in files if f.extension in s.extensions]
         skipped = len(files) - len(media)
         if skipped:
-            log.info(f"Пропущено файлов с другими расширениями: {skipped}")
+            log.info(f"Skipped files with other extensions: {skipped}")
         files = media
 
     new = db.record_scan(files)
     total = sum(f.size for f in files)
-    log.ok(f"Найдено файлов: {len(files)} ({log.size(total)}), новых: {new}")
-    log.info(f"Журнал обновлён: {db.path}")
+    log.ok(f"Files found: {len(files)} ({log.size(total)}), new: {new}")
+    log.info(f"Journal updated: {db.path}")
     return files
 
 
 def is_same_file(path: Path, f: CardFile) -> bool:
-    """Локальный файл — тот же снимок: совпадают размер и время (его ставит card.download)."""
+    """The local file is the same photo: size and time match (card.download sets the time)."""
     st = path.stat()
     return st.st_size == f.size and f.modified is not None and int(st.st_mtime) == int(f.modified.timestamp())
 
 
 def local_target(s: Settings, f: CardFile) -> tuple[Path, bool]:
-    """Куда сохранить снимок и лежит ли он там уже.
+    """Where to save the photo and whether it is already there.
 
-    Папки по дате съёмки: downloads/2026-07-24/DSC00206.JPG. Имена после
-    форматирования карты повторяются, поэтому чужой файл с тем же именем
-    не перезаписывается — новый получает суффикс: DSC00206_1.JPG.
+    Folders by capture date: downloads/2026-07-24/DSC00206.JPG. Names repeat
+    after the card is formatted, so a different file with the same name is
+    never overwritten — the new one gets a suffix: DSC00206_1.JPG.
     """
-    folder = s.download_dir / (f.modified.strftime("%Y-%m-%d") if f.modified else "без даты")
+    folder = s.download_dir / (f.modified.strftime("%Y-%m-%d") if f.modified else "undated")
     name = Path(f.name)
     path = folder / f.name
     n = 0
@@ -71,7 +71,7 @@ def local_target(s: Settings, f: CardFile) -> tuple[Path, bool]:
 
 
 def find_local(s: Settings, db: Storage, f: CardFile) -> Path | None:
-    """Где снимок уже лежит на диске: по пути из журнала или в папке его даты."""
+    """Where the photo already is on disk: at the journal path or in its date folder."""
     recorded = db.local_path(f)
     if recorded and recorded.is_file() and is_same_file(recorded, f):
         return recorded
@@ -81,24 +81,24 @@ def find_local(s: Settings, db: Storage, f: CardFile) -> Path | None:
 
 
 def download(s: Settings, card: Card, db: Storage, files: list[CardFile], recheck: bool = False):
-    """Скачивает новые снимки.
+    """Downloads new photos.
 
-    recheck — не доверять отметкам «скачан» в журнале, а проверить каждый
-    снимок на диске: так восстанавливаются случайно удалённые файлы.
+    recheck — don't trust the "downloaded" marks in the journal, check every
+    photo on disk instead: this restores files deleted by accident.
     """
-    log.step(f"Загрузка в {s.download_dir}")
+    log.step(f"Downloading to {s.download_dir}")
 
     if recheck:
-        log.info("Отметки журнала не учитываются: проверяю наличие каждого файла на диске")
+        log.info("Ignoring journal marks: checking every file on disk")
         pending = files
     else:
         pending = [f for f in files if not db.is_downloaded(f)]
 
     if not pending:
-        log.ok("Все файлы уже скачаны")
+        log.ok("All files are already downloaded")
         return
 
-    # Файлы, которые уже лежат локально, не скачиваем и не учитываем в общем объёме
+    # Files that are already on disk are not downloaded and not counted in the total
     queue = []
     present = 0
     for f in pending:
@@ -106,21 +106,21 @@ def download(s: Settings, card: Card, db: Storage, files: list[CardFile], rechec
         if path:
             present += 1
             if not recheck:
-                log.info(f"{f.name}: уже есть локально ({path}), отмечаю как скачанный")
+                log.info(f"{f.name}: already on disk ({path}), marking as downloaded")
             db.mark_downloaded(f, path)
         else:
             if recheck and db.is_downloaded(f):
-                log.info(f"{f.name}: отмечен как скачанный, но на диске его нет — скачаю заново")
+                log.info(f"{f.name}: marked as downloaded but missing on disk — downloading again")
             queue.append(f)
 
     if recheck:
-        log.ok(f"Уже есть на диске: {present} из {len(pending)}")
+        log.ok(f"Already on disk: {present} of {len(pending)}")
 
     if not queue:
-        log.ok("Все файлы уже скачаны")
+        log.ok("All files are already downloaded")
         return
 
-    log.info(f"К загрузке: {len(queue)} файл(ов), {log.size(sum(f.size for f in queue))}")
+    log.info(f"To download: {len(queue)} file(s), {log.size(sum(f.size for f in queue))}")
     progress = log.Progress(len(queue), sum(f.size for f in queue))
     errors = 0
 
@@ -128,7 +128,7 @@ def download(s: Settings, card: Card, db: Storage, files: list[CardFile], rechec
         for f in queue:
             progress.begin(f.name, f.size)
 
-            # Место выбирается прямо перед загрузкой, чтобы учесть файлы, скачанные в этой сессии
+            # The target is picked right before downloading to account for files saved in this session
             path, exists = local_target(s, f)
             if exists:
                 progress.drop()
@@ -149,35 +149,35 @@ def download(s: Settings, card: Card, db: Storage, files: list[CardFile], rechec
         progress.close()
 
     elapsed = time.monotonic() - progress.start
-    summary = f"{log.size(progress.done)} за {int(elapsed) // 60}:{int(elapsed) % 60:02d}"
+    summary = f"{log.size(progress.done)} in {int(elapsed) // 60}:{int(elapsed) % 60:02d}"
     if errors:
-        log.warn(f"Скачано {len(queue) - errors} из {len(queue)} ({summary}), ошибок: {errors}")
+        log.warn(f"Downloaded {len(queue) - errors} of {len(queue)} ({summary}), errors: {errors}")
     else:
-        log.ok(f"Скачано файлов: {len(queue)} ({summary})")
+        log.ok(f"Files downloaded: {len(queue)} ({summary})")
 
 
 def cmd_status(s: Settings, card: Card, args):
-    log.step("Состояние")
+    log.step("Status")
     iface = connection.interface(s)
     ip = wifi.ip_address(iface)
-    log.info(f"Wi-Fi: {'включён' if wifi.is_powered(iface) else 'выключен'}, IP {ip or 'нет'}")
+    log.info(f"Wi-Fi: {'on' if wifi.is_powered(iface) else 'off'}, IP {ip or 'none'}")
 
     ssid = card.ssid(timeout=2)
     if ssid == s.ssid:
-        log.ok(f"Карта «{ssid}» доступна, прошивка {card.firmware()}")
+        log.ok(f"Card \"{ssid}\" is reachable, firmware {card.firmware()}")
     elif ssid:
-        log.warn(f"На {s.host} отвечает другая карта: «{ssid}»")
+        log.warn(f"A different card answers at {s.host}: \"{ssid}\"")
     else:
-        log.info(f"Карта на {s.host} недоступна")
+        log.info(f"The card at {s.host} is not reachable")
 
-    # Без IP на Wi-Fi маршрут к карте неизбежно идёт через другой интерфейс
+    # Without an IP on Wi-Fi the route to the card always goes through another interface
     if ip:
         connection.check_route(s, iface)
 
     if s.database.exists():
         rows = Storage(s.database).all()
         done = sum(1 for r in rows if r["downloaded_at"])
-        log.info(f"Журнал {s.database}: файлов {len(rows)}, скачано {done}")
+        log.info(f"Journal {s.database}: {len(rows)} files, {done} downloaded")
 
 
 def cmd_connect(s: Settings, card: Card, args):
@@ -204,55 +204,55 @@ def cmd_download(s: Settings, card: Card, args):
 
 
 def cmd_list(s: Settings, card: Card, args):
-    log.step(f"Журнал {s.database}")
+    log.step(f"Journal {s.database}")
     if not s.database.exists():
-        log.info("Журнал пуст: сначала выполните scan")
+        log.info("The journal is empty: run scan first")
         return
 
     rows = Storage(s.database).all()
     for r in rows:
         mark = "✓" if r["downloaded_at"] else "·"
-        modified = r["modified"].replace("T", " ") or "без даты"
+        modified = r["modified"].replace("T", " ") or "undated"
         print(f"  {mark} {modified:<19}  {r['name']:<16} {log.size(r['size']):>10}  {r['card_path']}")
-    log.info(f"Всего: {len(rows)}, скачано: {sum(1 for r in rows if r['downloaded_at'])}")
+    log.info(f"Total: {len(rows)}, downloaded: {sum(1 for r in rows if r['downloaded_at'])}")
 
 
 COMMANDS = {
-    "status": (cmd_status, "показать состояние Wi-Fi, карты и журнала"),
-    "connect": (cmd_connect, "подключиться к сети карты"),
-    "disconnect": (cmd_disconnect, "отключиться от сети карты"),
-    "scan": (cmd_scan, "подключиться, прочитать список файлов в журнал, отключиться"),
-    "download": (cmd_download, "то же, что scan, плюс скачать новые файлы"),
-    "list": (cmd_list, "показать журнал без подключения к карте"),
+    "status": (cmd_status, "show Wi-Fi, card and journal status"),
+    "connect": (cmd_connect, "join the card's network"),
+    "disconnect": (cmd_disconnect, "leave the card's network"),
+    "scan": (cmd_scan, "connect, record the file list in the journal, disconnect"),
+    "download": (cmd_download, "same as scan, plus download new files"),
+    "list": (cmd_list, "show the journal without connecting to the card"),
 }
 
 
 HELP = """\
-FlashAir — копирование снимков с карты Toshiba FlashAir W-04 по Wi-Fi
+FlashAir — copy photos from a Toshiba FlashAir W-04 card over Wi-Fi
 
-Запуск:  python3 -m flashair [--settings ФАЙЛ] КОМАНДА [ПАРАМЕТРЫ]
-         fa КОМАНДА [ПАРАМЕТРЫ]            (после ./install-aliases.sh)
+Usage:  python3 -m flashair [--settings FILE] COMMAND [OPTIONS]
+        fa COMMAND [OPTIONS]               (after ./install-aliases.sh)
 
-Команды:                                                          коротко
-  status                 состояние Wi-Fi, карты и журнала         fas
-  connect                подключиться к сети карты                fac
-  disconnect             отключиться от сети карты                fadc
-  scan [--keep]          записать снимки с карты в журнал         fasc
-  download [--keep]      то же + скачать новые снимки             fadl
-  download --recheck     скачать всё, чего нет на диске           fadr
-  list                   журнал без подключения к карте           fal
+Commands:                                                         alias
+  status                 Wi-Fi, card and journal status           fas
+  connect                join the card's network                  fac
+  disconnect             leave the card's network                 fadc
+  scan [--keep]          record the card's photos in the journal  fasc
+  download [--keep]      same + download new photos               fadl
+  download --recheck     download everything missing on disk      fadr
+  list                   journal without connecting to the card   fal
 
-Параметры:
-  --keep                 не отключаться от карты в конце
-  --recheck              не доверять отметкам «скачан», проверить файлы на диске
-  --settings ФАЙЛ        файл настроек (по умолчанию settings.json в папке проекта)
-  -h, --help             эта справка; КОМАНДА --help — справка по команде
+Options:
+  --keep                 stay on the card's network at the end
+  --recheck              ignore "downloaded" marks, check files on disk
+  --settings FILE        settings file (default: settings.json in the project folder)
+  -h, --help             this help; COMMAND --help — help for a command
 """
 
 
 class Parser(argparse.ArgumentParser):
     def error(self, message: str):
-        log.fail(f"{message}. Справка: python3 -m flashair --help")
+        log.fail(f"{message}. Help: python3 -m flashair --help")
         sys.exit(2)
 
 
@@ -260,18 +260,18 @@ def main() -> int:
     parser = Parser(prog="python3 -m flashair", add_help=False)
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("--settings", type=Path, default=DEFAULT_PATH)
-    sub = parser.add_subparsers(dest="command", metavar="команда", parser_class=Parser)
+    sub = parser.add_subparsers(dest="command", metavar="command", parser_class=Parser)
 
     for name, (_, help_text) in COMMANDS.items():
         p = sub.add_parser(name, description=help_text, add_help=False)
-        group = p.add_argument_group("параметры")
-        group.add_argument("-h", "--help", action="help", help="эта справка")
+        group = p.add_argument_group("options")
+        group.add_argument("-h", "--help", action="help", help="this help")
         if name in ("scan", "download"):
-            group.add_argument("--keep", action="store_true", help="не отключаться от карты в конце")
+            group.add_argument("--keep", action="store_true", help="stay on the card's network at the end")
         if name == "download":
             group.add_argument(
                 "--recheck", action="store_true",
-                help="не учитывать отметки «скачан»: проверить каждый файл на диске и докачать недостающие",
+                help="ignore \"downloaded\" marks: check every file on disk and download the missing ones",
             )
 
     args = parser.parse_args()
@@ -288,7 +288,7 @@ def main() -> int:
         log.fail(str(e))
         return 1
     except KeyboardInterrupt:
-        log.fail("Прервано пользователем")
+        log.fail("Interrupted by user")
         return 130
 
     return 0

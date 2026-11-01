@@ -1,4 +1,4 @@
-"""HTTP-API карты Toshiba FlashAir W-04 (command.cgi) на urllib."""
+"""HTTP API of the Toshiba FlashAir W-04 card (command.cgi) over urllib."""
 
 import os
 import urllib.error
@@ -14,7 +14,7 @@ from . import FlashAirError, log
 ATTR_DIRECTORY = 0x10
 CHUNK = 64 * 1024
 
-# Карта в локальной сети: системные прокси обходим
+# The card is on the local network: bypass system proxies
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
@@ -36,7 +36,7 @@ class CardFile:
 
 
 def fat_datetime(date: int, time: int) -> datetime | None:
-    """Дата и время в формате FAT (два 16-битных числа)."""
+    """Date and time in FAT format (two 16-bit numbers)."""
     try:
         return datetime(
             (date >> 9) + 1980, (date >> 5) & 0x0F, date & 0x1F,
@@ -59,10 +59,10 @@ class Card:
             with _opener.open(url, timeout=timeout or self.timeout) as r:
                 return r.read().decode("utf-8", "replace").strip()
         except (urllib.error.URLError, OSError) as e:
-            raise FlashAirError(f"Карта не отвечает ({url}): {e}") from e
+            raise FlashAirError(f"The card is not responding ({url}): {e}") from e
 
     def ssid(self, timeout: float | None = None) -> str | None:
-        """SSID карты (op=104) или None, если карта недоступна."""
+        """The card's SSID (op=104) or None if the card is unreachable."""
         try:
             return self.command(104, timeout=timeout)
         except FlashAirError:
@@ -72,7 +72,7 @@ class Card:
         return self.command(108)
 
     def list_dir(self, directory: str) -> list[CardFile]:
-        """Содержимое одной папки (op=100). Строка: папка,имя,размер,атрибуты,дата,время."""
+        """Contents of one folder (op=100). Line: folder,name,size,attributes,date,time."""
         text = self.command(100, DIR=directory)
         prefix = directory.rstrip("/") + ","
         result = []
@@ -82,7 +82,7 @@ class Card:
             if not line or line == "WLANSD_FILELIST":
                 continue
 
-            # Имя может содержать запятые, поэтому числовые поля отделяем справа
+            # The name may contain commas, so the numeric fields are split off from the right
             head, *numbers = line.rsplit(",", 4)
             if len(numbers) != 4:
                 continue
@@ -101,8 +101,8 @@ class Card:
         return result
 
     def walk(self, directory: str) -> list[CardFile]:
-        """Все файлы в папке и вложенных папках."""
-        log.info(f"Читаю папку {directory}")
+        """All files in the folder and its subfolders."""
+        log.info(f"Reading folder {directory}")
         files = []
 
         for entry in self.list_dir(directory):
@@ -114,9 +114,9 @@ class Card:
         return files
 
     def download(self, file: CardFile, target: Path, on_chunk: Callable[[int], None]):
-        """Скачивает файл во временный .part и переименовывает после проверки размера.
+        """Downloads the file into a temporary .part and renames it after checking the size.
 
-        on_chunk получает размер каждого принятого куска — для прогресса.
+        on_chunk receives the size of every received chunk — for progress.
         """
         url = self.base + urllib.parse.quote(file.path)
         part = target.with_name(target.name + ".part")
@@ -131,16 +131,16 @@ class Card:
                     on_chunk(len(chunk))
         except (urllib.error.URLError, OSError) as e:
             part.unlink(missing_ok=True)
-            raise FlashAirError(f"Ошибка загрузки {file.path}: {e}") from e
+            raise FlashAirError(f"Failed to download {file.path}: {e}") from e
 
         if done != file.size:
             part.unlink(missing_ok=True)
-            raise FlashAirError(f"{file.path}: получено {done} байт вместо {file.size}")
+            raise FlashAirError(f"{file.path}: received {done} bytes instead of {file.size}")
 
         part.replace(target)
 
-        # Время файла = время съёмки: так в Finder видно, когда сделан снимок,
-        # и по нему повторный запуск узнаёт уже скачанный файл
+        # File time = capture time: Finder shows when the photo was taken,
+        # and a later run uses it to recognize an already downloaded file
         if file.modified:
             ts = file.modified.timestamp()
             os.utime(target, (ts, ts))

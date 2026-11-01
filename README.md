@@ -1,13 +1,11 @@
 # FlashAir
 
-**English** · [Русская версия ниже ↓](#russian)
+Русская версия: ветка `Russian`.
 
 A utility for the Toshiba FlashAir W-04 card. It connects your Mac to the card's Wi-Fi, reads the
 file list, downloads new photos and switches the Mac back to its usual network. Runs on macOS with
 Python 3.10+ and no third-party libraries: Wi-Fi is controlled with the built-in `networksetup`,
 `ipconfig` and `route`.
-
-The terminal output and `--help` are in Russian.
 
 ## Setup
 
@@ -88,98 +86,5 @@ Options go at the end: `fadl --keep`.
 Vasiliy Mazaev · designed by Claude
 
 ## License
-
-[MIT](LICENSE)
-
----
-
-<a id="russian"></a>
-
-# FlashAir — русская версия
-
-[English version above ↑](#flashair) · **Русский**
-
-Утилита для карты Toshiba FlashAir W-04: сама подключает Mac к Wi-Fi карты, читает список файлов,
-скачивает новые и возвращает компьютер в обычную сеть. Работает на macOS, нужен только Python 3.10+
-без сторонних библиотек: Wi-Fi управляется штатными `networksetup`, `ipconfig` и `route`.
-
-## Настройка
-
-```bash
-cp settings.example.json settings.json
-```
-
-В `settings.json` укажите `card.ssid` и `card.password` своей карты. Остальные параметры:
-
-| Ключ | Смысл |
-|---|---|
-| `card.host`, `card.timeout` | адрес карты и таймаут HTTP-запросов, с |
-| `wifi.interface` | устройство Wi-Fi; пусто — найти автоматически |
-| `wifi.connect_attempts`, `wifi.connect_wait` | число попыток подключения и ожидание ответа карты, с |
-| `wifi.forget_network` | забывать сеть карты при отключении, чтобы macOS не подключалась к ней сама |
-| `files.root`, `files.extensions` | папка на карте и расширения файлов (пустой список — все файлы) |
-| `files.ignore` | шаблоны имён или путей, которые не считаются снимками; по умолчанию служебная картинка FlashAir `FA000001.JPG` |
-| `storage.database`, `storage.download_dir` | журнал SQLite и папка загрузок (относительно файла настроек) |
-
-`settings.json`, журнал и загрузки в git не попадают.
-
-## Журнал и загрузки
-
-Имена и пути на карте повторяются после форматирования или сброса счётчика, поэтому снимок
-в журнале определяется по имени, размеру и дате съёмки. Файлы сохраняются в папки по дате
-съёмки (`downloads/2026-07-24/DSC00206.JPG`); чужой файл с тем же именем не перезаписывается —
-новый получает суффикс `_1`. Время файла выставляется равным времени съёмки.
-
-Обычный `download` пропускает снимки, отмеченные в журнале как скачанные. `download --recheck`
-отметкам не доверяет: проверяет каждый снимок с карты на диске (по пути из журнала и в папке
-его даты, сравнивая размер и время) и скачивает только отсутствующие — например, случайно удалённые.
-
-## Команды
-
-```bash
-python3 -m flashair status       # состояние Wi-Fi, карты и журнала
-python3 -m flashair connect      # подключиться к сети карты
-python3 -m flashair disconnect   # отключиться
-python3 -m flashair scan         # подключиться → записать список файлов в журнал → отключиться
-python3 -m flashair download     # то же + скачать новые файлы
-python3 -m flashair download --recheck  # скачать заново всё, чего нет на диске
-python3 -m flashair list         # журнал без подключения
-```
-
-`--keep` у `scan` и `download` оставляет компьютер в сети карты. Если Mac уже был подключён к карте
-до запуска, утилита его не отключает. При ошибке или Ctrl+C отключение всё равно выполняется.
-
-Если включён VPN, запросы к `192.168.0.1` могут уходить в туннель — утилита об этом предупредит.
-
-Краткая справка: `python3 -m flashair --help`, по отдельной команде — `python3 -m flashair download --help`.
-
-## Короткие команды
-
-```bash
-./install-aliases.sh
-```
-
-Скрипт добавляет алиасы в `~/.zshrc` (или `~/.bash_profile` для bash), предварительно сохранив
-копию файла в `*.flashair-backup`. Повторный запуск обновляет алиасы, `./install-aliases.sh --remove`
-удаляет их. Алиасы работают из любой папки: настройки по умолчанию берутся из папки проекта.
-
-| Алиас | Команда |
-|---|---|
-| `fa` | любая: `fa status`, `fa --help` |
-| `fas` | `status` |
-| `fac` | `connect` |
-| `fadc` | `disconnect` |
-| `fasc` | `scan` |
-| `fadl` | `download` |
-| `fadr` | `download --recheck` |
-| `fal` | `list` |
-
-Параметры дописываются в конце: `fadl --keep`.
-
-## Автор
-
-Vasiliy Mazaev · designed by Claude
-
-## Лицензия
 
 [MIT](LICENSE)

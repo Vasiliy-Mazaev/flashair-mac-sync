@@ -1,9 +1,9 @@
-"""Журнал файлов карты в SQLite: что видели и что уже скачали.
+"""Journal of the card's files in SQLite: what was seen and what is already downloaded.
 
-Путь на карте не годится как идентификатор: после форматирования карты или
-сброса счётчика камера снова создаёт /DCIM/100MSDCF/DSC00001.JPG. Поэтому
-снимок определяется тройкой «имя + размер + дата съёмки», а путь хранится
-только как место, где файл видели в последний раз.
+The path on the card can't serve as an identifier: after the card is formatted
+or the counter is reset, the camera creates /DCIM/100MSDCF/DSC00001.JPG again.
+So a photo is identified by "name + size + capture time", and the path is
+stored only as the place where the file was last seen.
 """
 
 import sqlite3
@@ -21,7 +21,7 @@ def _now() -> str:
 
 
 def _key(f: CardFile) -> tuple[str, int, str]:
-    # Пустая строка вместо NULL: в SQLite NULL не участвуют в UNIQUE
+    # An empty string instead of NULL: NULLs don't take part in UNIQUE in SQLite
     return f.name, f.size, f.modified.isoformat() if f.modified else ""
 
 
@@ -43,8 +43,8 @@ class Storage:
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
                 size INTEGER NOT NULL,
-                modified TEXT NOT NULL,      -- дата съёмки из FAT, '' если не прочиталась
-                card_path TEXT NOT NULL,     -- где файл видели на карте в последний раз
+                modified TEXT NOT NULL,      -- capture time from FAT, '' if unreadable
+                card_path TEXT NOT NULL,     -- where the file was last seen on the card
                 first_seen TEXT NOT NULL,
                 last_seen TEXT NOT NULL,
                 downloaded_at TEXT,
@@ -59,8 +59,8 @@ class Storage:
         return "path" in columns
 
     def _migrate_from_path_key(self):
-        """Первая версия журнала была с ключом по пути на карте — переносим записи."""
-        log.info(f"Обновляю журнал {self.path} до новой структуры")
+        """The first journal version was keyed by the card path — move the records over."""
+        log.info(f"Upgrading journal {self.path} to the new structure")
         self.conn.execute("ALTER TABLE files RENAME TO files_old")
         self._create()
         self.conn.execute("""
@@ -76,7 +76,7 @@ class Storage:
         self.conn.close()
 
     def record_scan(self, files: list[CardFile]) -> int:
-        """Сохраняет результат сканирования, возвращает число новых снимков."""
+        """Saves a scan result, returns the number of new photos."""
         before = self.count()
         now = _now()
 

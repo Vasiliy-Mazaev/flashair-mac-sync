@@ -1,4 +1,4 @@
-"""Загрузка настроек из JSON-файла (по умолчанию settings.json в папке проекта)."""
+"""Loads settings from a JSON file (settings.json in the project folder by default)."""
 
 import json
 from dataclasses import dataclass
@@ -6,30 +6,30 @@ from pathlib import Path
 
 from . import FlashAirError
 
-# Папка проекта, а не текущая: утилита запускается из любого места (алиасы)
+# The project folder, not the current one: the utility runs from anywhere (aliases)
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "settings.json"
 
 
 @dataclass
 class Settings:
-    # Карта
+    # Card
     ssid: str
     password: str
     host: str
     timeout: float
 
     # Wi-Fi
-    interface: str  # пусто — определить автоматически
+    interface: str  # empty — detect automatically
     connect_attempts: int
     connect_wait: float
-    forget_network: bool  # убирать сеть карты из списка известных при отключении
+    forget_network: bool  # remove the card's network from known networks on disconnect
 
-    # Файлы на карте
+    # Files on the card
     root: str
-    extensions: frozenset[str]  # пусто — все файлы
-    ignore: tuple[str, ...]  # шаблоны имён или путей, которые не считаются снимками
+    extensions: frozenset[str]  # empty — all files
+    ignore: tuple[str, ...]  # name or path patterns that are not photos
 
-    # Локальное хранилище
+    # Local storage
     database: Path
     download_dir: Path
 
@@ -37,13 +37,13 @@ class Settings:
 def load(path: Path = DEFAULT_PATH) -> Settings:
     if not path.exists():
         raise FlashAirError(
-            f"Нет файла настроек {path}. Скопируйте settings.example.json в {path} и укажите SSID и пароль карты."
+            f"No settings file {path}. Copy settings.example.json to {path} and set the card's SSID and password."
         )
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        raise FlashAirError(f"Ошибка в {path}: {e}") from e
+        raise FlashAirError(f"Error in {path}: {e}") from e
 
     card = data.get("card", {})
     wifi = data.get("wifi", {})
@@ -51,9 +51,9 @@ def load(path: Path = DEFAULT_PATH) -> Settings:
     storage = data.get("storage", {})
 
     if not card.get("ssid") or not card.get("password"):
-        raise FlashAirError(f"В {path} не заданы card.ssid и card.password")
+        raise FlashAirError(f"card.ssid and card.password are not set in {path}")
 
-    # Относительные пути считаются от папки с файлом настроек
+    # Relative paths are resolved from the settings file's folder
     base = path.resolve().parent
 
     def resolve(value: str) -> Path:
@@ -71,7 +71,7 @@ def load(path: Path = DEFAULT_PATH) -> Settings:
         forget_network=bool(wifi.get("forget_network", True)),
         root=files.get("root", "/DCIM"),
         extensions=frozenset(e.upper().lstrip(".") for e in files.get("extensions", [])),
-        # FA000001.JPG — служебная картинка FlashAir, лежит на каждой карте
+        # FA000001.JPG is the FlashAir service image found on every card
         ignore=tuple(files.get("ignore", ["FA000001.JPG"])),
         database=resolve(storage.get("database", "flashair.db")),
         download_dir=resolve(storage.get("download_dir", "downloads")),

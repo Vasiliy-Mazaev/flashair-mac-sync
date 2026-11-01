@@ -2,7 +2,7 @@
 __pycache__/
 .DS_Store
 
-# Локальные настройки (пароль карты) и данные
+# Local settings (card password) and data
 settings.json
 *.db
 downloads/

@@ -1,4 +1,4 @@
-"""Управление Wi-Fi через штатные утилиты macOS: networksetup, ipconfig, route."""
+"""Wi-Fi control with the built-in macOS tools: networksetup, ipconfig, route."""
 
 import re
 import subprocess
@@ -7,7 +7,7 @@ from . import FlashAirError, log
 
 
 def run(args: list[str], secret: str | None = None, check: bool = True, quiet: bool = False) -> str:
-    """Выполняет команду, показывая её в терминале (секрет заменяется звёздочками)."""
+    """Runs a command and shows it in the terminal (the secret is replaced with asterisks)."""
     if not quiet:
         log.cmd(["********" if secret and a == secret else a for a in args])
 
@@ -15,18 +15,18 @@ def run(args: list[str], secret: str | None = None, check: bool = True, quiet: b
     out = (p.stdout + p.stderr).strip()
 
     if check and p.returncode != 0:
-        raise FlashAirError(f"{args[0]} завершилась с кодом {p.returncode}: {out}")
+        raise FlashAirError(f"{args[0]} exited with code {p.returncode}: {out}")
 
     return out
 
 
 def find_interface() -> str:
-    """Ищет устройство Wi-Fi (en0, en1, …) в списке аппаратных портов."""
+    """Finds the Wi-Fi device (en0, en1, …) in the list of hardware ports."""
     out = run(["networksetup", "-listallhardwareports"])
     match = re.search(r"Hardware Port: (?:Wi-Fi|AirPort)\s*\nDevice: (\S+)", out)
 
     if not match:
-        raise FlashAirError("Не найден Wi-Fi-интерфейс")
+        raise FlashAirError("No Wi-Fi interface found")
 
     return match.group(1)
 
@@ -40,7 +40,7 @@ def set_power(interface: str, on: bool):
 
 
 def join(interface: str, ssid: str, password: str):
-    # networksetup возвращает 0 и при ошибке, поэтому успех — это пустой вывод
+    # networksetup returns 0 even on failure, so success means empty output
     out = run(["networksetup", "-setairportnetwork", interface, ssid, password], secret=password)
 
     if out:
@@ -48,7 +48,7 @@ def join(interface: str, ssid: str, password: str):
 
 
 def forget(interface: str, ssid: str) -> str | None:
-    """Убирает сеть из списка известных. Возвращает текст ошибки или None."""
+    """Removes the network from known networks. Returns the error text or None."""
     out = run(["networksetup", "-removepreferredwirelessnetwork", interface, ssid], check=False)
     return None if out.startswith("Removed") else out
 
@@ -59,7 +59,7 @@ def ip_address(interface: str) -> str | None:
 
 
 def route_interface(host: str) -> str | None:
-    """Через какой интерфейс система отправит пакеты на host (VPN может перехватывать)."""
+    """Which interface the system will send packets to host through (a VPN may intercept them)."""
     out = run(["route", "-n", "get", host], check=False, quiet=True)
     match = re.search(r"interface: (\S+)", out)
     return match.group(1) if match else None

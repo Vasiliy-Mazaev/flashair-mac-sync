@@ -1,13 +1,14 @@
 #!/bin/bash
-# Добавляет короткие команды утилиты FlashAir в файл настроек оболочки
-# (~/.zshrc для zsh, ~/.bash_profile для bash).
+# Adds short commands for the FlashAir utility to the shell startup file
+# (~/.zshrc for zsh, ~/.bash_profile for bash).
 #
-#   ./install-aliases.sh           добавить или обновить алиасы
-#   ./install-aliases.sh --remove  удалить алиасы
+#   ./install-aliases.sh           add or update the aliases
+#   ./install-aliases.sh --remove  remove the aliases
 #
-# Алиасы записываются одним блоком между метками, поэтому повторный запуск
-# заменяет блок, а не дописывает второй. Перед изменением делается копия файла.
-# Другой файл можно указать явно: RC_FILE=~/.zprofile ./install-aliases.sh
+# The aliases are written as one block between markers, so running the script
+# again replaces the block instead of adding a second one. A copy of the file
+# is saved before any change. Another file can be given explicitly:
+# RC_FILE=~/.zprofile ./install-aliases.sh
 
 set -euo pipefail
 
@@ -15,19 +16,19 @@ PROJECT="$(cd "$(dirname "$0")" && pwd)"
 BEGIN="# >>> flashair aliases >>>"
 END="# <<< flashair aliases <<<"
 
-# Имя, аргументы утилиты, описание
+# Name, utility arguments, description
 ALIASES=(
-    "fa||любая команда: fa status, fa --help"
-    "fas|status|состояние Wi-Fi, карты и журнала"
-    "fac|connect|подключиться к сети карты"
-    "fadc|disconnect|отключиться от сети карты"
-    "fasc|scan|записать снимки с карты в журнал"
-    "fadl|download|скачать новые снимки"
-    "fadr|download --recheck|скачать всё, чего нет на диске"
-    "fal|list|журнал без подключения к карте"
+    "fa||any command: fa status, fa --help"
+    "fas|status|Wi-Fi, card and journal status"
+    "fac|connect|join the card's network"
+    "fadc|disconnect|leave the card's network"
+    "fasc|scan|record the card's photos in the journal"
+    "fadl|download|download new photos"
+    "fadr|download --recheck|download everything missing on disk"
+    "fal|list|journal without connecting to the card"
 )
 
-# Вывод в том же стиле, что и у утилиты
+# Output in the same style as the utility
 if [ -t 1 ]; then
     step() { printf '\n\033[1;36m▶ \033[0m\033[1m%s\033[0m\n' "$1"; }
     ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
@@ -41,17 +42,17 @@ else
 fi
 info() { printf '  %s\n' "$1"; }
 
-# Файл настроек оболочки
+# Shell startup file
 if [ -z "${RC_FILE:-}" ]; then
     case "$(basename "${SHELL:-}")" in
         zsh)  RC_FILE="$HOME/.zshrc" ;;
         bash) RC_FILE="$HOME/.bash_profile" ;;
-        *)    fail "Оболочка ${SHELL:-неизвестна} не поддерживается. Укажите файл: RC_FILE=… $0" ;;
+        *)    fail "Shell ${SHELL:-unknown} is not supported. Set the file explicitly: RC_FILE=… $0" ;;
     esac
 fi
 
 remove_block() {
-    # Всё между метками (включительно) выбрасывается; cat > сохраняет права файла
+    # Everything between the markers (inclusive) is dropped; cat > keeps the file's permissions
     local tmp
     tmp="$(mktemp)"
     awk -v b="$BEGIN" -v e="$END" '$0 == b { skip = 1 } !skip { print } $0 == e { skip = 0 }' "$RC_FILE" > "$tmp"
@@ -61,59 +62,59 @@ remove_block() {
 
 backup() {
     cp "$RC_FILE" "$RC_FILE.flashair-backup"
-    info "Копия файла до изменения: $RC_FILE.flashair-backup"
+    info "Copy of the file before the change: $RC_FILE.flashair-backup"
 }
 
 if [ "${1:-}" = "--remove" ]; then
-    step "Удаление алиасов FlashAir из $RC_FILE"
+    step "Removing FlashAir aliases from $RC_FILE"
     if [ ! -f "$RC_FILE" ] || ! grep -qxF "$BEGIN" "$RC_FILE"; then
-        ok "Алиасов нет, менять нечего"
+        ok "No aliases found, nothing to change"
         exit 0
     fi
     backup
     remove_block
-    ok "Блок алиасов удалён"
-    info "В уже открытых окнах терминала алиасы останутся до перезапуска"
+    ok "Alias block removed"
+    info "Terminal windows that are already open keep the aliases until restarted"
     exit 0
 elif [ -n "${1:-}" ]; then
-    fail "Неизвестный параметр $1. Запуск: $0 [--remove]"
+    fail "Unknown option $1. Usage: $0 [--remove]"
 fi
 
-step "Проверка окружения"
-info "Папка проекта: $PROJECT"
+step "Checking the environment"
+info "Project folder: $PROJECT"
 case "$PROJECT" in
-    *\'*) fail "В пути к проекту есть апостроф — алиасы с ним не записать" ;;
+    *\'*) fail "The project path contains an apostrophe — aliases can't be written with it" ;;
 esac
 
-command -v python3 > /dev/null || fail "Не найден python3"
+command -v python3 > /dev/null || fail "python3 not found"
 python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
-    || fail "Нужен Python 3.10 или новее, найден $(python3 --version 2>&1)"
+    || fail "Python 3.10 or newer is required, found $(python3 --version 2>&1)"
 ok "$(python3 --version 2>&1): $(command -v python3)"
 
-[ -f "$PROJECT/settings.json" ] || warn "Нет settings.json — скопируйте settings.example.json и укажите SSID и пароль карты"
+[ -f "$PROJECT/settings.json" ] || warn "No settings.json — copy settings.example.json and set the card's SSID and password"
 
-# Алиас с тем же именем, что у существующей программы, перекроет её
+# An alias with the same name as an existing program shadows it
 for entry in "${ALIASES[@]}"; do
     name="${entry%%|*}"
     if path="$(command -v "$name" 2>/dev/null)" && [ "${path#/}" != "$path" ]; then
-        warn "Имя $name уже занято программой $path — алиас её перекроет"
+        warn "The name $name is already taken by $path — the alias will shadow it"
     fi
 done
 
-step "Запись алиасов в $RC_FILE"
+step "Writing aliases to $RC_FILE"
 if [ -f "$RC_FILE" ]; then
     backup
     if grep -qxF "$BEGIN" "$RC_FILE"; then
-        info "Алиасы уже были — заменяю блок"
+        info "Aliases were already there — replacing the block"
         remove_block
     fi
 else
-    info "Файла нет — создаю"
+    info "The file doesn't exist — creating it"
 fi
 
 {
     echo "$BEGIN"
-    echo "# Короткие команды утилиты FlashAir, добавлены $PROJECT/install-aliases.sh"
+    echo "# Short commands for the FlashAir utility, added by $PROJECT/install-aliases.sh"
     for entry in "${ALIASES[@]}"; do
         IFS='|' read -r name args _ <<< "$entry"
         echo "alias $name='PYTHONPATH=\"$PROJECT\" python3 -m flashair${args:+ $args}'"
@@ -125,8 +126,8 @@ for entry in "${ALIASES[@]}"; do
     IFS='|' read -r name _ description <<< "$entry"
     printf '  %-6s %s\n' "$name" "$description"
 done
-ok "Добавлено алиасов: ${#ALIASES[@]}"
+ok "Aliases added: ${#ALIASES[@]}"
 
-step "Готово"
-info "Новые окна терминала подхватят алиасы сами. В этом окне выполните:"
+step "Done"
+info "New terminal windows pick up the aliases automatically. In this window run:"
 info "  source $RC_FILE"
