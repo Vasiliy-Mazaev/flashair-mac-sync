@@ -73,8 +73,8 @@ class Progress:
         percent = self.done * 100 // self.total if self.total else 100
         print(f"  {_paint('32', '✓')} [{self.index}/{self.count}] {self.name}  {size(self.file_size)}  (всего {percent}%)")
 
-    def fail(self):
-        """Файл не скачан: его байты исключаются из общего объёма."""
+    def drop(self):
+        """Файл не скачан или не нужен: его байты исключаются из общего объёма."""
         self.done -= self.file_done
         self.total -= self.file_size
         self._clear()

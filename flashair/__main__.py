@@ -29,25 +29,48 @@ def scan(s: Settings, card: Card, db: Storage) -> list[CardFile]:
     return files
 
 
+def is_same_file(path: Path, f: CardFile) -> bool:
+    """Локальный файл — тот же снимок: совпадают размер и время (его ставит card.download)."""
+    st = path.stat()
+    return st.st_size == f.size and f.modified is not None and int(st.st_mtime) == int(f.modified.timestamp())
+
+
+def local_target(s: Settings, f: CardFile) -> tuple[Path, bool]:
+    """Куда сохранить снимок и лежит ли он там уже.
+
+    Папки по дате съёмки: downloads/2026-07-24/DSC00206.JPG. Имена после
+    форматирования карты повторяются, поэтому чужой файл с тем же именем
+    не перезаписывается — новый получает суффикс: DSC00206_1.JPG.
+    """
+    folder = s.download_dir / (f.modified.strftime("%Y-%m-%d") if f.modified else "без даты")
+    name = Path(f.name)
+    path = folder / f.name
+    n = 0
+
+    while path.exists():
+        if is_same_file(path, f):
+            return path, True
+        n += 1
+        path = folder / f"{name.stem}_{n}{name.suffix}"
+
+    return path, False
+
+
 def download(s: Settings, card: Card, db: Storage, files: list[CardFile]):
-    pending = [f for f in files if not db.is_downloaded(f.path)]
+    pending = [f for f in files if not db.is_downloaded(f)]
 
     log.step(f"Загрузка в {s.download_dir}")
     if not pending:
         log.ok("Все файлы уже скачаны")
         return
 
-    # Структура папок карты сохраняется: downloads/DCIM/101__TSB/…
-    def target(f: CardFile) -> Path:
-        return s.download_dir / f.path.lstrip("/")
-
     # Файлы, которые уже лежат локально, не скачиваем и не учитываем в общем объёме
     queue = []
     for f in pending:
-        t = target(f)
-        if t.exists() and t.stat().st_size == f.size:
-            log.info(f"{f.name}: уже есть локально, отмечаю как скачанный")
-            db.mark_downloaded(f.path, t)
+        path, exists = local_target(s, f)
+        if exists:
+            log.info(f"{f.name}: уже есть локально ({path}), отмечаю как скачанный")
+            db.mark_downloaded(f, path)
         else:
             queue.append(f)
 
@@ -62,15 +85,23 @@ def download(s: Settings, card: Card, db: Storage, files: list[CardFile]):
     try:
         for f in queue:
             progress.begin(f.name, f.size)
+
+            # Место выбирается прямо перед загрузкой, чтобы учесть файлы, скачанные в этой сессии
+            path, exists = local_target(s, f)
+            if exists:
+                progress.drop()
+                db.mark_downloaded(f, path)
+                continue
+
             try:
-                card.download(f, target(f), progress.advance)
+                card.download(f, path, progress.advance)
             except FlashAirError as e:
-                progress.fail()
+                progress.drop()
                 log.warn(str(e))
                 errors += 1
                 continue
 
-            db.mark_downloaded(f.path, target(f))
+            db.mark_downloaded(f, path)
             progress.finish()
     finally:
         progress.close()
@@ -139,7 +170,8 @@ def cmd_list(s: Settings, card: Card, args):
     rows = Storage(s.database).all()
     for r in rows:
         mark = "✓" if r["downloaded_at"] else "·"
-        print(f"  {mark} {r['path']:<40} {log.size(r['size']):>10}  {r['modified'] or ''}")
+        modified = r["modified"].replace("T", " ") or "без даты"
+        print(f"  {mark} {modified:<19}  {r['name']:<16} {log.size(r['size']):>10}  {r['card_path']}")
     log.info(f"Всего: {len(rows)}, скачано: {sum(1 for r in rows if r['downloaded_at'])}")
 
 

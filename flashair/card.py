@@ -1,5 +1,6 @@
 """HTTP-API карты FlashAir (command.cgi) на urllib."""
 
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -137,3 +138,9 @@ class Card:
             raise FlashAirError(f"{file.path}: получено {done} байт вместо {file.size}")
 
         part.replace(target)
+
+        # Время файла = время съёмки: так в Finder видно, когда сделан снимок,
+        # и по нему повторный запуск узнаёт уже скачанный файл
+        if file.modified:
+            ts = file.modified.timestamp()
+            os.utime(target, (ts, ts))
