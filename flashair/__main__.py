@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 from . import FlashAirError, connection, log, wifi
@@ -36,29 +37,50 @@ def download(s: Settings, card: Card, db: Storage, files: list[CardFile]):
         log.ok("Все файлы уже скачаны")
         return
 
-    log.info(f"К загрузке: {len(pending)} файл(ов), {log.size(sum(f.size for f in pending))}")
+    # Структура папок карты сохраняется: downloads/DCIM/101__TSB/…
+    def target(f: CardFile) -> Path:
+        return s.download_dir / f.path.lstrip("/")
+
+    # Файлы, которые уже лежат локально, не скачиваем и не учитываем в общем объёме
+    queue = []
+    for f in pending:
+        t = target(f)
+        if t.exists() and t.stat().st_size == f.size:
+            log.info(f"{f.name}: уже есть локально, отмечаю как скачанный")
+            db.mark_downloaded(f.path, t)
+        else:
+            queue.append(f)
+
+    if not queue:
+        log.ok("Все файлы уже скачаны")
+        return
+
+    log.info(f"К загрузке: {len(queue)} файл(ов), {log.size(sum(f.size for f in queue))}")
+    progress = log.Progress(len(queue), sum(f.size for f in queue))
     errors = 0
 
-    for f in pending:
-        # Структура папок карты сохраняется: downloads/DCIM/101__TSB/…
-        target = s.download_dir / f.path.lstrip("/")
-
-        if target.exists() and target.stat().st_size == f.size:
-            log.info(f"{f.name}: уже есть локально, отмечаю как скачанный")
-        else:
+    try:
+        for f in queue:
+            progress.begin(f.name, f.size)
             try:
-                card.download(f, target)
+                card.download(f, target(f), progress.advance)
             except FlashAirError as e:
+                progress.fail()
                 log.warn(str(e))
                 errors += 1
                 continue
 
-        db.mark_downloaded(f.path, target)
+            db.mark_downloaded(f.path, target(f))
+            progress.finish()
+    finally:
+        progress.close()
 
+    elapsed = time.monotonic() - progress.start
+    summary = f"{log.size(progress.done)} за {int(elapsed) // 60}:{int(elapsed) % 60:02d}"
     if errors:
-        log.warn(f"Скачано {len(pending) - errors} из {len(pending)}, ошибок: {errors}")
+        log.warn(f"Скачано {len(queue) - errors} из {len(queue)} ({summary}), ошибок: {errors}")
     else:
-        log.ok(f"Скачано файлов: {len(pending)}")
+        log.ok(f"Скачано файлов: {len(queue)} ({summary})")
 
 
 def cmd_status(s: Settings, card: Card, args):

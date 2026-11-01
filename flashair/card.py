@@ -3,6 +3,7 @@
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -111,8 +112,11 @@ class Card:
 
         return files
 
-    def download(self, file: CardFile, target: Path):
-        """Скачивает файл во временный .part и переименовывает после проверки размера."""
+    def download(self, file: CardFile, target: Path, on_chunk: Callable[[int], None]):
+        """Скачивает файл во временный .part и переименовывает после проверки размера.
+
+        on_chunk получает размер каждого принятого куска — для прогресса.
+        """
         url = self.base + urllib.parse.quote(file.path)
         part = target.with_name(target.name + ".part")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +127,7 @@ class Card:
                 while chunk := r.read(CHUNK):
                     f.write(chunk)
                     done += len(chunk)
-                    log.progress(file.name, done, file.size)
+                    on_chunk(len(chunk))
         except (urllib.error.URLError, OSError) as e:
             part.unlink(missing_ok=True)
             raise FlashAirError(f"Ошибка загрузки {file.path}: {e}") from e

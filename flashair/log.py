@@ -1,6 +1,8 @@
 """Наглядный вывод в терминал: этапы, системные команды, результаты."""
 
+import shutil
 import sys
+import time
 
 _COLOR = sys.stdout.isatty()
 
@@ -36,17 +38,80 @@ def fail(text: str):
     print(_paint("31", "✗ ") + text, file=sys.stderr)
 
 
-def progress(name: str, done: int, total: int):
-    """Строка прогресса загрузки; в терминале перерисовывается на месте."""
-    percent = done * 100 // total if total else 100
-    line = f"  ↓ {name}  {percent:3d}%  {size(done)} / {size(total)}"
+class Progress:
+    """Прогресс всей сессии загрузки.
 
-    if _COLOR:
-        print("\r" + line, end="", flush=True)
-        if done >= total:
-            print()
-    elif done >= total:
-        print(line)
+    В терминале одна строка перерисовывается на месте: сначала общий прогресс,
+    в конце — текущий файл. Если строка не влезает в ширину окна, обрезается
+    часть про файл. Над строкой остаётся список уже скачанных файлов.
+    """
+
+    REDRAW = 0.1  # не чаще раза в 0,1 с
+
+    def __init__(self, count: int, total: int):
+        self.count = count
+        self.total = total
+        self.done = 0  # байт за сессию, включая завершённые файлы
+        self.index = 0
+        self.start = time.monotonic()
+        self.drawn = 0.0
+
+    def begin(self, name: str, file_size: int):
+        self.index += 1
+        self.name = name
+        self.file_size = file_size
+        self.file_done = 0
+        self._draw(force=True)
+
+    def advance(self, n: int):
+        self.file_done += n
+        self.done += n
+        self._draw()
+
+    def finish(self):
+        self._clear()
+        percent = self.done * 100 // self.total if self.total else 100
+        print(f"  {_paint('32', '✓')} [{self.index}/{self.count}] {self.name}  {size(self.file_size)}  (всего {percent}%)")
+
+    def fail(self):
+        """Файл не скачан: его байты исключаются из общего объёма."""
+        self.done -= self.file_done
+        self.total -= self.file_size
+        self._clear()
+
+    def close(self):
+        self._clear()
+
+    def line(self) -> str:
+        percent = self.done * 100 // self.total if self.total else 100
+        elapsed = time.monotonic() - self.start
+        speed = self.done / elapsed if elapsed > 0 else 0
+        text = f"  ↓ Всего {percent:3d}%  [{self.index}/{self.count}]  {size(self.done)} / {size(self.total)}"
+
+        # Оставшееся время важнее скорости, поэтому идёт раньше и обрезается позже
+        if speed:
+            left = int((self.total - self.done) / speed)
+            text += f"  ~{left // 60}:{left % 60:02d}  {size(int(speed))}/с"
+
+        if self.file_done < self.file_size:
+            file_percent = self.file_done * 100 // self.file_size
+            text += f"  · {self.name} {file_percent}%"
+
+        return text
+
+    def _draw(self, force: bool = False):
+        now = time.monotonic()
+        if not _COLOR or (not force and now - self.drawn < self.REDRAW):
+            return
+
+        self.drawn = now
+        width = shutil.get_terminal_size().columns - 1
+        # \033[K стирает остаток прошлой строки, если новая короче
+        print("\r" + self.line()[:width] + "\033[K", end="", flush=True)
+
+    def _clear(self):
+        if _COLOR:
+            print("\r\033[K", end="", flush=True)
 
 
 def size(n: int) -> str:
