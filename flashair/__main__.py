@@ -56,23 +56,51 @@ def local_target(s: Settings, f: CardFile) -> tuple[Path, bool]:
     return path, False
 
 
-def download(s: Settings, card: Card, db: Storage, files: list[CardFile]):
-    pending = [f for f in files if not db.is_downloaded(f)]
+def find_local(s: Settings, db: Storage, f: CardFile) -> Path | None:
+    """Где снимок уже лежит на диске: по пути из журнала или в папке его даты."""
+    recorded = db.local_path(f)
+    if recorded and recorded.is_file() and is_same_file(recorded, f):
+        return recorded
 
+    path, exists = local_target(s, f)
+    return path if exists else None
+
+
+def download(s: Settings, card: Card, db: Storage, files: list[CardFile], recheck: bool = False):
+    """Скачивает новые снимки.
+
+    recheck — не доверять отметкам «скачан» в журнале, а проверить каждый
+    снимок на диске: так восстанавливаются случайно удалённые файлы.
+    """
     log.step(f"Загрузка в {s.download_dir}")
+
+    if recheck:
+        log.info("Отметки журнала не учитываются: проверяю наличие каждого файла на диске")
+        pending = files
+    else:
+        pending = [f for f in files if not db.is_downloaded(f)]
+
     if not pending:
         log.ok("Все файлы уже скачаны")
         return
 
     # Файлы, которые уже лежат локально, не скачиваем и не учитываем в общем объёме
     queue = []
+    present = 0
     for f in pending:
-        path, exists = local_target(s, f)
-        if exists:
-            log.info(f"{f.name}: уже есть локально ({path}), отмечаю как скачанный")
+        path = find_local(s, db, f)
+        if path:
+            present += 1
+            if not recheck:
+                log.info(f"{f.name}: уже есть локально ({path}), отмечаю как скачанный")
             db.mark_downloaded(f, path)
         else:
+            if recheck and db.is_downloaded(f):
+                log.info(f"{f.name}: отмечен как скачанный, но на диске его нет — скачаю заново")
             queue.append(f)
+
+    if recheck:
+        log.ok(f"Уже есть на диске: {present} из {len(pending)}")
 
     if not queue:
         log.ok("Все файлы уже скачаны")
@@ -157,7 +185,7 @@ def cmd_download(s: Settings, card: Card, args):
     db = Storage(s.database)
     with connection.session(s, card, keep=args.keep):
         files = scan(s, card, db)
-        download(s, card, db, files)
+        download(s, card, db, files, recheck=args.recheck)
     db.close()
 
 
@@ -194,6 +222,11 @@ def main() -> int:
         p = sub.add_parser(name, help=help_text)
         if name in ("scan", "download"):
             p.add_argument("--keep", action="store_true", help="не отключаться от карты в конце")
+        if name == "download":
+            p.add_argument(
+                "--recheck", action="store_true",
+                help="не учитывать отметки «скачан»: проверить каждый файл на диске и докачать недостающие",
+            )
 
     args = parser.parse_args()
 

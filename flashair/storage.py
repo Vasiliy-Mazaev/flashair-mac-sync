@@ -100,6 +100,12 @@ class Storage:
         ).fetchone()
         return bool(row and row["downloaded_at"])
 
+    def local_path(self, f: CardFile) -> Path | None:
+        row = self.conn.execute(
+            "SELECT local_path FROM files WHERE name = ? AND size = ? AND modified = ?", _key(f)
+        ).fetchone()
+        return Path(row["local_path"]) if row and row["local_path"] else None
+
     def mark_downloaded(self, f: CardFile, local_path: Path):
         self.conn.execute(
             "UPDATE files SET downloaded_at = ?, local_path = ? WHERE name = ? AND size = ? AND modified = ?",
