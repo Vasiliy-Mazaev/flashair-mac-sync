@@ -228,7 +228,7 @@ COMMANDS = {
 
 
 HELP = """\
-FlashAir — копирование снимков с карты Toshiba FlashAir по Wi-Fi
+FlashAir — копирование снимков с карты Toshiba FlashAir W-04 по Wi-Fi
 
 Запуск:  python3 -m flashair [--settings ФАЙЛ] КОМАНДА [ПАРАМЕТРЫ]
          fa КОМАНДА [ПАРАМЕТРЫ]            (после ./install-aliases.sh)

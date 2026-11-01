@@ -1,4 +1,4 @@
-"""HTTP-API карты FlashAir (command.cgi) на urllib."""
+"""HTTP-API карты Toshiba FlashAir W-04 (command.cgi) на urllib."""
 
 import os
 import urllib.error

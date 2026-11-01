@@ -1,4 +1,4 @@
-"""Утилита для работы с картой Toshiba FlashAir по Wi-Fi (macOS, только стандартная библиотека)."""
+"""Утилита для работы с картой Toshiba FlashAir W-04 по Wi-Fi (macOS, только стандартная библиотека)."""
 
 
 class FlashAirError(Exception):
