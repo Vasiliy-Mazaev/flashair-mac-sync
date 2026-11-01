@@ -6,6 +6,3 @@ __pycache__/
 settings.json
 *.db
 downloads/
-
-# Старый код: в 1-100.txt есть пароли карты
-old/
