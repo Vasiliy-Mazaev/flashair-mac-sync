@@ -1,11 +1,11 @@
-# FlashAir
+# flashair-mac-sync
 
 Русская версия: ветка `Russian`.
 
-A utility for the Toshiba FlashAir W-04 card. It connects your Mac to the card's Wi-Fi, reads the
-file list, downloads new photos and switches the Mac back to its usual network. Runs on macOS with
-Python 3.10+ and no third-party libraries: Wi-Fi is controlled with the built-in `networksetup`,
-`ipconfig` and `route`.
+Download photos from a Toshiba FlashAir W-04 Wi-Fi SD card on macOS. The utility automatically joins
+the card's Wi-Fi and switches back to your network, skips already downloaded photos, sorts them into
+date folders and restores accidentally deleted ones. Pure Python 3.10+, no dependencies: Wi-Fi is
+controlled with the built-in `networksetup`, `ipconfig` and `route`.
 
 ## Setup
 

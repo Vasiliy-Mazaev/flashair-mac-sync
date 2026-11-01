@@ -228,7 +228,7 @@ COMMANDS = {
 
 
 HELP = """\
-FlashAir — copy photos from a Toshiba FlashAir W-04 card over Wi-Fi
+flashair-mac-sync — copy photos from a Toshiba FlashAir W-04 card over Wi-Fi
 
 Usage:  python3 -m flashair [--settings FILE] COMMAND [OPTIONS]
         fa COMMAND [OPTIONS]               (after ./install-aliases.sh)
