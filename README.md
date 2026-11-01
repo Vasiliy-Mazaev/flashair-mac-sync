@@ -1,4 +1,4 @@
-# FlashAir
+# flashair-mac-sync
 
 English version: branch `English`.
 
