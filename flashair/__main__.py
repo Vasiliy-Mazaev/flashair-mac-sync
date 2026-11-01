@@ -227,22 +227,58 @@ COMMANDS = {
 }
 
 
+HELP = """\
+FlashAir — копирование снимков с карты Toshiba FlashAir по Wi-Fi
+
+Запуск:  python3 -m flashair [--settings ФАЙЛ] КОМАНДА [ПАРАМЕТРЫ]
+         fa КОМАНДА [ПАРАМЕТРЫ]            (после ./install-aliases.sh)
+
+Команды:                                                          коротко
+  status                 состояние Wi-Fi, карты и журнала         fas
+  connect                подключиться к сети карты                fac
+  disconnect             отключиться от сети карты                fadc
+  scan [--keep]          записать снимки с карты в журнал         fasc
+  download [--keep]      то же + скачать новые снимки             fadl
+  download --recheck     скачать всё, чего нет на диске           fadr
+  list                   журнал без подключения к карте           fal
+
+Параметры:
+  --keep                 не отключаться от карты в конце
+  --recheck              не доверять отметкам «скачан», проверить файлы на диске
+  --settings ФАЙЛ        файл настроек (по умолчанию settings.json в папке проекта)
+  -h, --help             эта справка; КОМАНДА --help — справка по команде
+"""
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message: str):
+        log.fail(f"{message}. Справка: python3 -m flashair --help")
+        sys.exit(2)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="python -m flashair", description="Работа с картой FlashAir по Wi-Fi")
-    parser.add_argument("--settings", type=Path, default=DEFAULT_PATH, help=f"файл настроек (по умолчанию {DEFAULT_PATH})")
-    sub = parser.add_subparsers(dest="command", required=True, metavar="команда")
+    parser = Parser(prog="python3 -m flashair", add_help=False)
+    parser.add_argument("-h", "--help", action="store_true")
+    parser.add_argument("--settings", type=Path, default=DEFAULT_PATH)
+    sub = parser.add_subparsers(dest="command", metavar="команда", parser_class=Parser)
 
     for name, (_, help_text) in COMMANDS.items():
-        p = sub.add_parser(name, help=help_text)
+        p = sub.add_parser(name, description=help_text, add_help=False)
+        group = p.add_argument_group("параметры")
+        group.add_argument("-h", "--help", action="help", help="эта справка")
         if name in ("scan", "download"):
-            p.add_argument("--keep", action="store_true", help="не отключаться от карты в конце")
+            group.add_argument("--keep", action="store_true", help="не отключаться от карты в конце")
         if name == "download":
-            p.add_argument(
+            group.add_argument(
                 "--recheck", action="store_true",
                 help="не учитывать отметки «скачан»: проверить каждый файл на диске и докачать недостающие",
             )
 
     args = parser.parse_args()
+
+    if args.help or not args.command:
+        print(HELP, end="")
+        return 0 if args.help else 2
 
     try:
         s = load(args.settings)

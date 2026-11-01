@@ -1,4 +1,4 @@
-"""Загрузка настроек из JSON-файла (по умолчанию settings.json рядом с запуском)."""
+"""Загрузка настроек из JSON-файла (по умолчанию settings.json в папке проекта)."""
 
 import json
 from dataclasses import dataclass
@@ -6,7 +6,8 @@ from pathlib import Path
 
 from . import FlashAirError
 
-DEFAULT_PATH = Path("settings.json")
+# Папка проекта, а не текущая: утилита запускается из любого места (алиасы)
+DEFAULT_PATH = Path(__file__).resolve().parent.parent / "settings.json"
 
 
 @dataclass

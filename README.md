@@ -52,4 +52,29 @@ python3 -m flashair list         # журнал без подключения
 
 Если включён VPN, запросы к `192.168.0.1` могут уходить в туннель — утилита об этом предупредит.
 
+Краткая справка: `python3 -m flashair --help`, по отдельной команде — `python3 -m flashair download --help`.
+
+## Короткие команды
+
+```bash
+./install-aliases.sh
+```
+
+Скрипт добавляет алиасы в `~/.zshrc` (или `~/.bash_profile` для bash), предварительно сохранив
+копию файла в `*.flashair-backup`. Повторный запуск обновляет алиасы, `./install-aliases.sh --remove`
+удаляет их. Алиасы работают из любой папки: настройки по умолчанию берутся из папки проекта.
+
+| Алиас | Команда |
+|---|---|
+| `fa` | любая: `fa status`, `fa --help` |
+| `fas` | `status` |
+| `fac` | `connect` |
+| `fadc` | `disconnect` |
+| `fasc` | `scan` |
+| `fadl` | `download` |
+| `fadr` | `download --recheck` |
+| `fal` | `list` |
+
+Параметры дописываются в конце: `fadl --keep`.
+
 Старый код лежит в `old/` для справки.
