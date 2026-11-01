@@ -19,6 +19,7 @@ cp settings.example.json settings.json
 | `wifi.connect_attempts`, `wifi.connect_wait` | число попыток подключения и ожидание ответа карты, с |
 | `wifi.forget_network` | забывать сеть карты при отключении, чтобы macOS не подключалась к ней сама |
 | `files.root`, `files.extensions` | папка на карте и расширения файлов (пустой список — все файлы) |
+| `files.ignore` | шаблоны имён или путей, которые не считаются снимками; по умолчанию служебная картинка FlashAir `FA000001.JPG` |
 | `storage.database`, `storage.download_dir` | журнал SQLite и папка загрузок (относительно файла настроек) |
 
 `settings.json`, журнал и загрузки в git не попадают.

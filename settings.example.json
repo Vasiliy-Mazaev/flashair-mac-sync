@@ -13,7 +13,8 @@
   },
   "files": {
     "root": "/DCIM",
-    "extensions": ["JPG", "JPEG", "ARW", "MP4", "MOV"]
+    "extensions": ["JPG", "JPEG", "ARW", "MP4", "MOV"],
+    "ignore": ["FA000001.JPG"]
   },
   "storage": {
     "database": "flashair.db",

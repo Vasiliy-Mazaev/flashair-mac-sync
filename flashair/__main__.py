@@ -1,6 +1,7 @@
 """Командная строка: python -m flashair <команда>."""
 
 import argparse
+import fnmatch
 import sys
 import time
 from pathlib import Path
@@ -11,9 +12,22 @@ from .settings import DEFAULT_PATH, Settings, load
 from .storage import Storage
 
 
+def is_ignored(s: Settings, f: CardFile) -> bool:
+    """Шаблон из files.ignore совпадает с именем или полным путём на карте (без учёта регистра)."""
+    return any(
+        fnmatch.fnmatch(f.name.upper(), p.upper()) or fnmatch.fnmatch(f.path.upper(), p.upper())
+        for p in s.ignore
+    )
+
+
 def scan(s: Settings, card: Card, db: Storage) -> list[CardFile]:
     log.step(f"Сканирование карты, папка {s.root}")
     files = card.walk(s.root)
+
+    ignored = [f for f in files if is_ignored(s, f)]
+    if ignored:
+        log.info(f"Игнорируются по настройке files.ignore: {', '.join(f.path for f in ignored)}")
+        files = [f for f in files if f not in ignored]
 
     if s.extensions:
         media = [f for f in files if f.extension in s.extensions]

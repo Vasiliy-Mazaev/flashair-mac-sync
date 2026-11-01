@@ -26,6 +26,7 @@ class Settings:
     # Файлы на карте
     root: str
     extensions: frozenset[str]  # пусто — все файлы
+    ignore: tuple[str, ...]  # шаблоны имён или путей, которые не считаются снимками
 
     # Локальное хранилище
     database: Path
@@ -69,6 +70,8 @@ def load(path: Path = DEFAULT_PATH) -> Settings:
         forget_network=bool(wifi.get("forget_network", True)),
         root=files.get("root", "/DCIM"),
         extensions=frozenset(e.upper().lstrip(".") for e in files.get("extensions", [])),
+        # FA000001.JPG — служебная картинка FlashAir, лежит на каждой карте
+        ignore=tuple(files.get("ignore", ["FA000001.JPG"])),
         database=resolve(storage.get("database", "flashair.db")),
         download_dir=resolve(storage.get("download_dir", "downloads")),
     )
