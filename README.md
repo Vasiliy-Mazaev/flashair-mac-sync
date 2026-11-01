@@ -1,6 +1,6 @@
 # flashair-mac-sync
 
-English version: branch `English`.
+[English version →](https://github.com/Vasiliy-Mazaev/flashair-mac-sync/tree/English)
 
 Утилита для карты Toshiba FlashAir W-04: сама подключает Mac к Wi-Fi карты, читает список файлов,
 скачивает новые и возвращает компьютер в обычную сеть. Работает на macOS, нужен только Python 3.10+
