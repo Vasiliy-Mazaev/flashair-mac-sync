@@ -1,0 +1,22 @@
+{
+  "card": {
+    "ssid": "flashair_xxxxxxxxxxxx",
+    "password": "12345678",
+    "host": "192.168.0.1",
+    "timeout": 5
+  },
+  "wifi": {
+    "interface": "",
+    "connect_attempts": 3,
+    "connect_wait": 30,
+    "forget_network": true
+  },
+  "files": {
+    "root": "/DCIM",
+    "extensions": ["JPG", "JPEG", "ARW", "MP4", "MOV"]
+  },
+  "storage": {
+    "database": "flashair.db",
+    "download_dir": "downloads"
+  }
+}
