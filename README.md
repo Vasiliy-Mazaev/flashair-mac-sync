@@ -1,6 +1,6 @@
 # flashair-mac-sync
 
-Русская версия: ветка `Russian`.
+[Русская версия →](https://github.com/Vasiliy-Mazaev/flashair-mac-sync/tree/Russian)
 
 Download photos from a Toshiba FlashAir W-04 Wi-Fi SD card on macOS. The utility automatically joins
 the card's Wi-Fi and switches back to your network, skips already downloaded photos, sorts them into
