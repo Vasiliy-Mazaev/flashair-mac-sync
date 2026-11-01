@@ -76,3 +76,7 @@ python3 -m flashair list         # журнал без подключения
 | `fal` | `list` |
 
 Параметры дописываются в конце: `fadl --keep`.
+
+## Лицензия
+
+[MIT](LICENSE)
