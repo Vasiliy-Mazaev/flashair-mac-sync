@@ -100,14 +100,16 @@ class Card:
 
         return result
 
-    def walk(self, directory: str) -> list[CardFile]:
-        """Все файлы в папке и вложенных папках."""
+    def walk(self, directory: str, skip: Callable[[str], bool] = lambda path: False) -> list[CardFile]:
+        """Все файлы в папке и вложенных папках; в папки, для которых skip истинно, не заходит."""
         log.info(f"Читаю папку {directory}")
         files = []
 
         for entry in self.list_dir(directory):
-            if entry.is_dir:
-                files.extend(self.walk(entry.path))
+            if entry.is_dir and skip(entry.path):
+                log.info(f"Пропускаю папку {entry.path} (files.ignore)")
+            elif entry.is_dir:
+                files.extend(self.walk(entry.path, skip))
             else:
                 files.append(entry)
 

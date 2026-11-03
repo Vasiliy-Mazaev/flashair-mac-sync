@@ -12,9 +12,13 @@
     "forget_network": true
   },
   "files": {
-    "root": "/DCIM",
-    "extensions": ["JPG", "JPEG", "ARW", "MP4", "MOV"],
-    "ignore": ["FA000001.JPG"]
+    "root": "/",
+    "extensions": [
+      "JPG", "JPEG", "HEIC", "HIF",
+      "ARW", "CR2", "CR3", "NEF", "RAF", "ORF", "RW2", "DNG",
+      "MP4", "MOV", "MTS", "M2TS", "AVI"
+    ],
+    "ignore": ["FA000001.JPG", "/PRIVATE/M4ROOT/THMBNL/*", "/PRIVATE/M4ROOT/SUB/*"]
   },
   "storage": {
     "database": "flashair.db",
