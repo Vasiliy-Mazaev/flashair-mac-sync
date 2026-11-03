@@ -9,6 +9,20 @@ from . import FlashAirError
 # The project folder, not the current one: the utility runs from anywhere (aliases)
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "settings.json"
 
+# Photos and videos of common cameras. The whole card is scanned, so the
+# camera's service files (XML, BIN, INP…) are filtered out by extension
+DEFAULT_EXTENSIONS = [
+    "JPG", "JPEG", "HEIC", "HIF",
+    "ARW", "CR2", "CR3", "NEF", "RAF", "ORF", "RW2", "DNG",
+    "MP4", "MOV", "MTS", "M2TS", "AVI",
+]
+
+DEFAULT_IGNORE = [
+    "FA000001.JPG",                # FlashAir service image found on every card
+    "/PRIVATE/M4ROOT/THMBNL/*",    # Sony: video thumbnails
+    "/PRIVATE/M4ROOT/SUB/*",       # Sony: low-quality proxy copies of videos
+]
+
 
 @dataclass
 class Settings:
@@ -69,10 +83,9 @@ def load(path: Path = DEFAULT_PATH) -> Settings:
         connect_attempts=int(wifi.get("connect_attempts", 3)),
         connect_wait=float(wifi.get("connect_wait", 30)),
         forget_network=bool(wifi.get("forget_network", True)),
-        root=files.get("root", "/DCIM"),
-        extensions=frozenset(e.upper().lstrip(".") for e in files.get("extensions", [])),
-        # FA000001.JPG is the FlashAir service image found on every card
-        ignore=tuple(files.get("ignore", ["FA000001.JPG"])),
+        root=files.get("root", "/"),
+        extensions=frozenset(e.upper().lstrip(".") for e in files.get("extensions", DEFAULT_EXTENSIONS)),
+        ignore=tuple(files.get("ignore", DEFAULT_IGNORE)),
         database=resolve(storage.get("database", "flashair.db")),
         download_dir=resolve(storage.get("download_dir", "downloads")),
     )

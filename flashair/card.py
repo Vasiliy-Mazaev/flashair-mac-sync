@@ -100,14 +100,16 @@ class Card:
 
         return result
 
-    def walk(self, directory: str) -> list[CardFile]:
-        """All files in the folder and its subfolders."""
+    def walk(self, directory: str, skip: Callable[[str], bool] = lambda path: False) -> list[CardFile]:
+        """All files in the folder and its subfolders; folders for which skip is true are not entered."""
         log.info(f"Reading folder {directory}")
         files = []
 
         for entry in self.list_dir(directory):
-            if entry.is_dir:
-                files.extend(self.walk(entry.path))
+            if entry.is_dir and skip(entry.path):
+                log.info(f"Skipping folder {entry.path} (files.ignore)")
+            elif entry.is_dir:
+                files.extend(self.walk(entry.path, skip))
             else:
                 files.append(entry)
 

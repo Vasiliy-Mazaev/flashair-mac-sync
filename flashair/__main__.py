@@ -20,9 +20,14 @@ def is_ignored(s: Settings, f: CardFile) -> bool:
     )
 
 
+def is_ignored_dir(s: Settings, path: str) -> bool:
+    """The whole folder is ignored: a pattern like /PRIVATE/M4ROOT/THMBNL/* covers all of it."""
+    return any(fnmatch.fnmatch(f"{path.upper()}/*", p.upper()) for p in s.ignore)
+
+
 def scan(s: Settings, card: Card, db: Storage) -> list[CardFile]:
     log.step(f"Scanning the card, folder {s.root}")
-    files = card.walk(s.root)
+    files = card.walk(s.root, skip=lambda path: is_ignored_dir(s, path))
 
     ignored = [f for f in files if is_ignored(s, f)]
     if ignored:

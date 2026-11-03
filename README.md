@@ -21,13 +21,16 @@ Put your card's `card.ssid` and `card.password` into `settings.json`. Other sett
 | `wifi.interface` | Wi-Fi device; empty — detect automatically |
 | `wifi.connect_attempts`, `wifi.connect_wait` | connection attempts and how long to wait for the card, s |
 | `wifi.forget_network` | forget the card's network on disconnect so macOS doesn't rejoin it by itself |
-| `files.root`, `files.extensions` | folder on the card and file extensions (empty list — all files) |
-| `files.ignore` | name or path patterns that are not photos; by default the FlashAir service image `FA000001.JPG` |
+| `files.root`, `files.extensions` | folder on the card (default `/` — the whole card) and photo/video extensions; empty list — all files |
+| `files.ignore` | name or path patterns that are not photos; folders covered by a `/FOLDER/*` pattern are not entered. By default: the FlashAir service image `FA000001.JPG`, Sony video thumbnails and proxy copies (`/PRIVATE/M4ROOT/THMBNL/*`, `/PRIVATE/M4ROOT/SUB/*`) |
 | `storage.database`, `storage.download_dir` | SQLite journal and download folder (relative to the settings file) |
 
 `settings.json`, the journal and downloads are kept out of git.
 
 ## Journal and downloads
+
+The whole card is scanned: cameras store files differently (Sony, for example, writes videos to
+`/PRIVATE/M4ROOT/CLIP`, not `/DCIM`). The camera's service files are filtered out by the extension list.
 
 File names and paths on the card repeat after formatting or a counter reset, so a photo is
 identified in the journal by its name, size and capture time. Files are saved into folders by
